@@ -69,6 +69,36 @@ const getParentTreeitem = (treeitem: HTMLElement): HTMLElement | null => {
   return null
 }
 
+const isExpandable = (treeitem: HTMLElement): boolean => {
+  return treeitem.hasAttribute('aria-expanded')
+}
+
+const isExpanded = (treeitem: HTMLElement): boolean => {
+  return treeitem.getAttribute('aria-expanded') === 'true'
+}
+
+const collapseTreeitem = (treeitem: HTMLElement) => {
+  if (treeitem.hasAttribute('aria-expanded')) {
+    treeitem.setAttribute('aria-expanded', 'false')
+  }
+}
+
+const expandTreeitem = (treeitem: HTMLElement) => {
+  if (treeitem.hasAttribute('aria-expanded')) {
+    treeitem.setAttribute('aria-expanded', 'true')
+  }
+}
+
+const expandAllSiblingTreeitems = (treeitem: HTMLElement) => {
+  const parentNode = treeitem.parentElement?.parentElement
+  if (parentNode) {
+    const siblings = parentNode.querySelectorAll(':scope > li > a[aria-expanded]')
+    siblings.forEach(sibling => {
+      sibling.setAttribute('aria-expanded', 'true')
+    })
+  }
+}
+
 const setFocusToTreeitem = (treeitem: HTMLElement) => {
   const allItems = getAllTreeitems()
   allItems.forEach(item => {
@@ -109,23 +139,38 @@ const setFocusToParentTreeitem = (treeitem: HTMLElement) => {
   }
 }
 
-const isExpandable = (treeitem: HTMLElement): boolean => {
-  return treeitem.hasAttribute('aria-expanded')
-}
+const setFocusByFirstCharacter = (treeitem: HTMLElement, char: string) => {
+  const visibleItems = getVisibleTreeitems()
+  const currentIndex = visibleItems.indexOf(treeitem)
+  const lowerChar = char.toLowerCase()
 
-const isExpanded = (treeitem: HTMLElement): boolean => {
-  return treeitem.getAttribute('aria-expanded') === 'true'
-}
-
-const collapseTreeitem = (treeitem: HTMLElement) => {
-  if (treeitem.hasAttribute('aria-expanded')) {
-    treeitem.setAttribute('aria-expanded', 'false')
+  let start = currentIndex + 1
+  if (start >= visibleItems.length) {
+    start = 0
   }
-}
 
-const expandTreeitem = (treeitem: HTMLElement) => {
-  if (treeitem.hasAttribute('aria-expanded')) {
-    treeitem.setAttribute('aria-expanded', 'true')
+  // Check remaining items
+  for (let i = start; i < visibleItems.length; i++) {
+    const item = visibleItems[i]
+    if (item && item.textContent) {
+      const firstChar = item.textContent.trim().charAt(0).toLowerCase()
+      if (firstChar === lowerChar) {
+        setFocusToTreeitem(item)
+        return
+      }
+    }
+  }
+
+  // Check from beginning
+  for (let i = 0; i < start; i++) {
+    const item = visibleItems[i]
+    if (item && item.textContent) {
+      const firstChar = item.textContent.trim().charAt(0).toLowerCase()
+      if (firstChar === lowerChar) {
+        setFocusToTreeitem(item)
+        return
+      }
+    }
   }
 }
 
@@ -136,47 +181,100 @@ const handleKeydown = (event: KeyboardEvent) => {
   const key = event.key
   let flag = false
 
+  const isPrintableCharacter = (str: string) => {
+    return str.length === 1 && str.match(/\S/)
+  }
+
   if (event.altKey || event.ctrlKey || event.metaKey) {
     return
   }
 
-  switch (key) {
-    case 'Up':
-    case 'ArrowUp':
-      setFocusToPreviousTreeitem(target)
-      flag = true
-      break
-
-    case 'Down':
-    case 'ArrowDown':
-      setFocusToNextTreeitem(target)
-      flag = true
-      break
-
-    case 'Right':
-    case 'ArrowRight':
-      if (isExpandable(target)) {
-        if (isExpanded(target)) {
-          setFocusToNextTreeitem(target)
-        } else {
-          expandTreeitem(target)
-        }
-      }
-      flag = true
-      break
-
-    case 'Left':
-    case 'ArrowLeft':
-      if (isExpandable(target) && isExpanded(target)) {
-        collapseTreeitem(target)
+  if (event.shiftKey) {
+    if (isPrintableCharacter(key)) {
+      if (key === '*') {
+        expandAllSiblingTreeitems(target)
         flag = true
       } else {
-        if (isInSubtree(target)) {
-          setFocusToParentTreeitem(target)
-          flag = true
-        }
+        setFocusByFirstCharacter(target, key)
+        flag = true
       }
-      break
+    }
+  } else {
+    switch (key) {
+      case ' ':
+        handleItemClick(target.getAttribute('href') || '', target.textContent?.trim() || '')
+        flag = true
+        break
+
+      case 'Up':
+      case 'ArrowUp':
+        setFocusToPreviousTreeitem(target)
+        flag = true
+        break
+
+      case 'Down':
+      case 'ArrowDown':
+        setFocusToNextTreeitem(target)
+        flag = true
+        break
+
+      case 'Right':
+      case 'ArrowRight':
+        if (isExpandable(target)) {
+          if (isExpanded(target)) {
+            setFocusToNextTreeitem(target)
+          } else {
+            expandTreeitem(target)
+          }
+        }
+        flag = true
+        break
+
+      case 'Left':
+      case 'ArrowLeft':
+        if (isExpandable(target) && isExpanded(target)) {
+          collapseTreeitem(target)
+          flag = true
+        } else {
+          if (isInSubtree(target)) {
+            setFocusToParentTreeitem(target)
+            flag = true
+          }
+        }
+        break
+
+      case 'Home': {
+        const allItems = getAllTreeitems()
+        const firstItem = allItems[0]
+        if (firstItem) {
+          setFocusToTreeitem(firstItem)
+        }
+        flag = true
+        break
+      }
+
+      case 'End': {
+        const visibleItems = getVisibleTreeitems()
+        const lastItem = visibleItems[visibleItems.length - 1]
+        if (lastItem) {
+          setFocusToTreeitem(lastItem)
+        }
+        flag = true
+        break
+      }
+
+      default:
+        if (isPrintableCharacter(key)) {
+          if (key === '*') {
+            expandAllSiblingTreeitems(target)
+            flag = true
+          } else {
+            setFocusByFirstCharacter(target, key)
+            flag = true
+          }
+        }
+        break
+    }
   }
 
   if (flag) {
