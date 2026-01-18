@@ -100,6 +100,35 @@ const setFocusToPreviousTreeitem = (treeitem: HTMLElement) => {
   }
 }
 
+const setFocusToParentTreeitem = (treeitem: HTMLElement) => {
+  if (isInSubtree(treeitem)) {
+    const parent = getParentTreeitem(treeitem)
+    if (parent) {
+      setFocusToTreeitem(parent)
+    }
+  }
+}
+
+const isExpandable = (treeitem: HTMLElement): boolean => {
+  return treeitem.hasAttribute('aria-expanded')
+}
+
+const isExpanded = (treeitem: HTMLElement): boolean => {
+  return treeitem.getAttribute('aria-expanded') === 'true'
+}
+
+const collapseTreeitem = (treeitem: HTMLElement) => {
+  if (treeitem.hasAttribute('aria-expanded')) {
+    treeitem.setAttribute('aria-expanded', 'false')
+  }
+}
+
+const expandTreeitem = (treeitem: HTMLElement) => {
+  if (treeitem.hasAttribute('aria-expanded')) {
+    treeitem.setAttribute('aria-expanded', 'true')
+  }
+}
+
 const handleKeydown = (event: KeyboardEvent) => {
   const target = event.target as HTMLElement
   if (target.getAttribute('role') !== 'treeitem') return
@@ -122,6 +151,31 @@ const handleKeydown = (event: KeyboardEvent) => {
     case 'ArrowDown':
       setFocusToNextTreeitem(target)
       flag = true
+      break
+
+    case 'Right':
+    case 'ArrowRight':
+      if (isExpandable(target)) {
+        if (isExpanded(target)) {
+          setFocusToNextTreeitem(target)
+        } else {
+          expandTreeitem(target)
+        }
+      }
+      flag = true
+      break
+
+    case 'Left':
+    case 'ArrowLeft':
+      if (isExpandable(target) && isExpanded(target)) {
+        collapseTreeitem(target)
+        flag = true
+      } else {
+        if (isInSubtree(target)) {
+          setFocusToParentTreeitem(target)
+          flag = true
+        }
+      }
       break
   }
 
