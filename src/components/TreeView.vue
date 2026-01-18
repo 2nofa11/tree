@@ -69,6 +69,68 @@ const getParentTreeitem = (treeitem: HTMLElement): HTMLElement | null => {
   return null
 }
 
+const setFocusToTreeitem = (treeitem: HTMLElement) => {
+  const allItems = getAllTreeitems()
+  allItems.forEach(item => {
+    item.tabIndex = -1
+  })
+  treeitem.tabIndex = 0
+  treeitem.focus()
+}
+
+const setFocusToNextTreeitem = (treeitem: HTMLElement) => {
+  const visibleItems = getVisibleTreeitems()
+  const currentIndex = visibleItems.indexOf(treeitem)
+  if (currentIndex >= 0 && currentIndex < visibleItems.length - 1) {
+    const nextItem = visibleItems[currentIndex + 1]
+    if (nextItem) {
+      setFocusToTreeitem(nextItem)
+    }
+  }
+}
+
+const setFocusToPreviousTreeitem = (treeitem: HTMLElement) => {
+  const visibleItems = getVisibleTreeitems()
+  const currentIndex = visibleItems.indexOf(treeitem)
+  if (currentIndex > 0) {
+    const prevItem = visibleItems[currentIndex - 1]
+    if (prevItem) {
+      setFocusToTreeitem(prevItem)
+    }
+  }
+}
+
+const handleKeydown = (event: KeyboardEvent) => {
+  const target = event.target as HTMLElement
+  if (target.getAttribute('role') !== 'treeitem') return
+
+  const key = event.key
+  let flag = false
+
+  if (event.altKey || event.ctrlKey || event.metaKey) {
+    return
+  }
+
+  switch (key) {
+    case 'Up':
+    case 'ArrowUp':
+      setFocusToPreviousTreeitem(target)
+      flag = true
+      break
+
+    case 'Down':
+    case 'ArrowDown':
+      setFocusToNextTreeitem(target)
+      flag = true
+      break
+  }
+
+  if (flag) {
+    event.stopPropagation()
+    event.preventDefault()
+  }
+}
+
 const handleBodyFocusin = (event: FocusEvent) => {
   const target = event.target as HTMLElement
   isNavFocused.value = treeNode.value?.contains(target) ?? false
@@ -76,6 +138,7 @@ const handleBodyFocusin = (event: FocusEvent) => {
 
 useEventListener(document.body, 'focusin', handleBodyFocusin)
 useEventListener(document.body, 'mousedown', handleBodyFocusin)
+useEventListener(treeNode, 'keydown', handleKeydown)
 </script>
 
 <template>
