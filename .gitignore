@@ -12,6 +12,20 @@ dist
 dist-ssr
 *.local
 
+# Test coverage
+coverage
+*.tsbuildinfo
+
+# Vitest
+.vitest
+
+# Temporary/Sample files
+html
+sample
+
+# Claude AI
+.claude
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
